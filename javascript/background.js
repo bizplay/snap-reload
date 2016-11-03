@@ -61,11 +61,12 @@
 // the default of calling chrome.tabs.reload() is best
 
 var tabSuccessCount = {}; // store of succesful probe calls
+var tabUnresponsiveCount = {}; // store of probe calls that got stuck in limbo
 // Interval between checks, do not make this too short (
 // less than 1 second seems unwise, better no less than
 // 2 seconds) since it is also used to determine if a
 // tab is unresponsive
-var checkInterval = 5000; // in milliseconds
+var checkInterval = 10000; // in milliseconds
 var tabsChecked = {}; // store for arrays of tab-ids that were checked
 var checkIndex = 0; // index of current array of checked tab-ids
 var nrTabs = 0; // current number of tabs
@@ -92,6 +93,8 @@ function tabShouldBeReloaded(tab) {
   // Reload if at least one sucessful no-op has occurred.
   // This might be too causious but ensures the tab was working
   // before it crashed
+  // this also ensures that we do not reload a tab that takes a long
+  // time to load (being unresponsive whilst doing so)
   return tabSuccessCount[tab.id] > 0;
 }
 
@@ -100,6 +103,15 @@ function registerSuccessfulNoOp(tab) {
     tabSuccessCount[tab.id] = 0;
   }
   tabSuccessCount[tab.id] += 1;
+  tabUnresponsiveCount[tab.id] = 0;
+}
+
+function registerUnresponsive(tab) {
+  if ((tabUnresponsiveCount[tab.id] || null) === null) {
+    tabUnresponsiveCount[tab.id] = 0;
+  }
+  tabSuccessCount[tab.id] = 0;
+  tabUnresponsiveCount[tab.id] += 1;
 }
 
 function tabCrashed() {
@@ -140,18 +152,21 @@ function reloadUnresposiveTabs(index, nrTabs, tabs) {
     console.log("Found " + nrTabsToFind.toString() + " unresponsive tabs");
     for (var j = 0; j < nrTabs && nrTabsToFind > 0; j += 1) {
       if (tabsChecked[index].indexOf(tabs[j].id) == -1) {
-        console.log("Reload unresponsive tab:" + tabs[j].id.toString());
-        // Reloading an unresponsive tab does not work
-        // chrome.tabs.reload(tabs[j].id);
-        // Therefore a new tab is created with the url of the old tab
-        // and the unresponsive tab is removed.
-        // Setting the new tab as active is mainly aimed at kiosk-like applications
-        chrome.tabs.create({url: tabs[j].url, active: true}, function(tab){
-          console.log("Created new tab: id=" + tab.id.toString() + " title=" + (tab.title || "") + " url=" + (tab.url || ""));
-        });
-        chrome.tabs.remove(tabs[j].id, function(){
-          console.log("Removed unresponsive tab:" + tabs[j].id.toString());
-        });
+        registerUnresponsive(tabs[j]);
+        if (tabShouldBeReloaded(tabs[j])) {
+          console.log("Reload unresponsive tab:" + tabs[j].id.toString());
+          // Reloading an unresponsive tab does not work
+          // chrome.tabs.reload(tabs[j].id);
+          // Therefore a new tab is created with the url of the old tab
+          // and the unresponsive tab is removed.
+          // Setting the new tab as active is mainly aimed at kiosk-like applications
+          chrome.tabs.create({url: tabs[j].url, active: true}, function(tab){
+            console.log("Created new tab: id=" + tab.id.toString() + " title=" + (tab.title || "") + " url=" + (tab.url || ""));
+          });
+          chrome.tabs.remove(tabs[j].id, function(){
+            console.log("Removed unresponsive tab:" + tabs[j].id.toString());
+          });
+        }
         nrTabsToFind -= 1;
       }
     }
@@ -183,6 +198,7 @@ function tabChanged(tabId, changeInfo, tab) {
   console.log("Resetting Stats for tab: id=" + tabId.toString() + " title=" +
               (tab !== undefined ? tab.title : ""));
   tabSuccessCount[tabId] = 0;
+  tabUnresponsiveCount[tabId] = 0;
 }
 
 setInterval(function() {
