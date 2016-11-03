@@ -3,7 +3,7 @@
     "short_name": "Snap Reload",
     "description": "Release candidate, for testing only. Reload Chrome tabs that run into errors (Aw, snap)",
     "manifest_version": 2,
-    "version": "0.9.5.0",
+    "version": "0.9.5.1",
     "background": {
         "scripts": ["javascript/background.js"],
         "persistent": true
