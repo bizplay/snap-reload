@@ -110,7 +110,6 @@ function registerUnresponsive(tab) {
   if ((tabUnresponsiveCount[tab.id] || null) === null) {
     tabUnresponsiveCount[tab.id] = 0;
   }
-  tabSuccessCount[tab.id] = 0;
   tabUnresponsiveCount[tab.id] += 1;
 }
 

@@ -3,7 +3,7 @@
     "short_name": "Snap Reload",
     "description": "Reload crashed or unresponsive Chrome tabs (Aw, snap). Specifically intended for digital signage content running in kiosk mode.",
     "manifest_version": 2,
-    "version": "0.9.5.3",
+    "version": "0.9.5.4",
     "background": {
         "scripts": ["javascript/background.js"],
         "persistent": true
